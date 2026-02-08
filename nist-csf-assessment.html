@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIST CSF 2.0 Assessment Tool</title>
+<style>
+:root {
+  --clr-govern: #6366f1;
+  --clr-identify: #3b82f6;
+  --clr-protect: #22c55e;
+  --clr-detect: #f59e0b;
+  --clr-respond: #ef4444;
+  --clr-recover: #8b5cf6;
+  --bg: #0f172a;
+  --bg2: #1e293b;
+  --bg3: #334155;
+  --fg: #f1f5f9;
+  --fg2: #94a3b8;
+  --border: #475569;
+  --radius: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--fg); min-height: 100vh; }
+button { cursor: pointer; font-family: inherit; }
+.app { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+/* Header */
+.header { text-align: center; padding: 30px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
+.header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.header p { color: var(--fg2); font-size: 14px; }
+
+/* Navigation Tabs */
+.nav-tabs { display: flex; gap: 4px; background: var(--bg2); border-radius: var(--radius); padding: 4px; margin-bottom: 30px; }
+.nav-tab { flex: 1; padding: 12px 16px; border: none; background: transparent; color: var(--fg2); font-size: 14px; font-weight: 500; border-radius: 6px; transition: all .2s; }
+.nav-tab:hover { color: var(--fg); background: var(--bg3); }
+.nav-tab.active { background: var(--clr-govern); color: #fff; }
+
+/* Assessment Info Bar */
+.info-bar { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
+.info-bar input, .info-bar select { background: var(--bg2); border: 1px solid var(--border); color: var(--fg); padding: 10px 14px; border-radius: var(--radius); font-size: 14px; }
+.info-bar input { flex: 1; min-width: 200px; }
+.info-bar select { min-width: 160px; }
+
+/* Progress Bar */
+.progress-container { margin-bottom: 24px; }
+.progress-label { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: var(--fg2); }
+.progress-bar { height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--clr-govern), var(--clr-identify)); border-radius: 4px; transition: width .4s ease; }
+
+/* Function Sidebar + Content Layout */
+.assessment-layout { display: flex; gap: 20px; }
+.func-sidebar { width: 240px; flex-shrink: 0; }
+.func-btn { width: 100%; padding: 12px 16px; margin-bottom: 4px; border: 2px solid transparent; border-radius: var(--radius); background: var(--bg2); color: var(--fg); font-size: 13px; font-weight: 500; text-align: left; transition: all .2s; display: flex; align-items: center; gap: 10px; }
+.func-btn .badge { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.func-btn .count { margin-left: auto; font-size: 11px; color: var(--fg2); background: var(--bg3); padding: 2px 8px; border-radius: 10px; }
+.func-btn:hover { background: var(--bg3); }
+.func-btn.active { border-color: var(--clr-govern); background: var(--bg3); }
+.func-btn[data-fn="GV"] .badge, .func-btn[data-fn="GV"].active { border-color: var(--clr-govern); }
+.func-btn[data-fn="GV"] .badge { background: var(--clr-govern); }
+.func-btn[data-fn="ID"] .badge { background: var(--clr-identify); }
+.func-btn[data-fn="ID"].active { border-color: var(--clr-identify); }
+.func-btn[data-fn="PR"] .badge { background: var(--clr-protect); }
+.func-btn[data-fn="PR"].active { border-color: var(--clr-protect); }
+.func-btn[data-fn="DE"] .badge { background: var(--clr-detect); }
+.func-btn[data-fn="DE"].active { border-color: var(--clr-detect); }
+.func-btn[data-fn="RS"] .badge { background: var(--clr-respond); }
+.func-btn[data-fn="RS"].active { border-color: var(--clr-respond); }
+.func-btn[data-fn="RC"] .badge { background: var(--clr-recover); }
+.func-btn[data-fn="RC"].active { border-color: var(--clr-recover); }
+
+.assessment-content { flex: 1; min-width: 0; }
+
+/* Category Card */
+.category-card { background: var(--bg2); border-radius: var(--radius); margin-bottom: 16px; border: 1px solid var(--border); }
+.category-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.category-header h3 { font-size: 15px; font-weight: 600; }
+.category-header .cat-id { color: var(--fg2); font-size: 12px; font-weight: 400; margin-left: 8px; }
+.category-header .chevron { color: var(--fg2); transition: transform .2s; font-size: 18px; }
+.category-header .chevron.open { transform: rotate(180deg); }
+.category-body { padding: 0 20px 16px; display: none; }
+.category-body.open { display: block; }
+
+/* Subcategory Row */
+.subcat-row { padding: 14px 0; border-top: 1px solid var(--bg3); }
+.subcat-row:first-child { border-top: none; }
+.subcat-id { font-size: 12px; font-weight: 600; color: var(--fg2); margin-bottom: 4px; }
+.subcat-desc { font-size: 13px; line-height: 1.5; margin-bottom: 10px; color: var(--fg); }
+.subcat-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.tier-group { display: flex; flex-direction: column; gap: 4px; }
+.tier-label { font-size: 11px; color: var(--fg2); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+.tier-btns { display: flex; gap: 2px; }
+.tier-btn { padding: 6px 10px; border: 1px solid var(--border); background: var(--bg); color: var(--fg2); font-size: 12px; border-radius: 4px; min-width: 32px; text-align: center; transition: all .15s; }
+.tier-btn:first-child { border-radius: 4px 0 0 4px; }
+.tier-btn:last-child { border-radius: 0 4px 4px 0; }
+.tier-btn:hover { background: var(--bg3); color: var(--fg); }
+.tier-btn.selected-0 { background: #991b1b; border-color: #dc2626; color: #fca5a5; }
+.tier-btn.selected-1 { background: #92400e; border-color: #f59e0b; color: #fde68a; }
+.tier-btn.selected-2 { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+.tier-btn.selected-3 { background: #14532d; border-color: #22c55e; color: #86efac; }
+.tier-btn.selected-4 { background: #4c1d95; border-color: #8b5cf6; color: #c4b5fd; }
+.notes-input { flex: 1; min-width: 200px; background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: inherit; resize: vertical; min-height: 34px; }
+.notes-input::placeholder { color: var(--fg2); }
+
+/* Heatmap View */
+.heatmap-container { padding: 20px 0; }
+.heatmap-legend { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg2); }
+.legend-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border); }
+
+.heatmap-grid { display: flex; flex-direction: column; gap: 24px; }
+.heatmap-function { background: var(--bg2); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
+.heatmap-fn-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.heatmap-fn-title .dot { width: 10px; height: 10px; border-radius: 50%; }
+.heatmap-cats { display: flex; flex-wrap: wrap; gap: 10px; }
+.heatmap-cat { background: var(--bg3); border-radius: 6px; padding: 12px; min-width: 160px; flex: 1; }
+.heatmap-cat-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--fg2); }
+.heatmap-cells { display: flex; flex-wrap: wrap; gap: 4px; }
+.heatmap-cell { width: 44px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; color: #fff; cursor: default; position: relative; border: 1px solid rgba(255,255,255,0.1); }
+.heatmap-cell .tooltip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; font-size: 11px; font-weight: 400; white-space: nowrap; z-index: 100; color: var(--fg); pointer-events: none; margin-bottom: 4px; max-width: 300px; white-space: normal; }
+.heatmap-cell:hover .tooltip { display: block; }
+
+/* Radar Chart */
+.radar-section { margin-top: 30px; text-align: center; }
+.radar-section h3 { margin-bottom: 16px; font-size: 16px; }
+.radar-canvas-wrap { display: inline-block; background: var(--bg2); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
+
+/* Summary Scores */
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 30px; }
+.summary-card { background: var(--bg2); border-radius: var(--radius); padding: 20px; text-align: center; border: 1px solid var(--border); }
+.summary-card .score { font-size: 36px; font-weight: 700; }
+.summary-card .label { font-size: 13px; color: var(--fg2); margin-top: 4px; }
+.summary-card .bar { height: 6px; background: var(--bg3); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.summary-card .bar-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+
+/* Gap Analysis */
+.gap-section { margin-top: 30px; }
+.gap-section h3 { font-size: 16px; margin-bottom: 14px; }
+.gap-table { width: 100%; border-collapse: collapse; background: var(--bg2); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+.gap-table th { background: var(--bg3); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .5px; }
+.gap-table td { padding: 10px 14px; border-top: 1px solid var(--bg3); font-size: 13px; }
+.gap-table tr:hover td { background: rgba(255,255,255,0.02); }
+.gap-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+
+/* Buttons */
+.btn { padding: 10px 20px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 500; transition: all .2s; display: inline-flex; align-items: center; gap: 8px; }
+.btn-primary { background: var(--clr-govern); color: #fff; }
+.btn-primary:hover { background: #4f46e5; }
+.btn-secondary { background: var(--bg3); color: var(--fg); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-success { background: #16a34a; color: #fff; }
+.btn-success:hover { background: #15803d; }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+
+.actions-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+
+/* View panels */
+.view-panel { display: none; }
+.view-panel.active { display: block; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .assessment-layout { flex-direction: column; }
+  .func-sidebar { width: 100%; display: flex; flex-wrap: wrap; gap: 4px; }
+  .func-btn { width: auto; flex: 1; min-width: 100px; justify-content: center; }
+  .func-btn .count { display: none; }
+  .subcat-controls { flex-direction: column; }
+  .notes-input { min-width: 100%; }
+}
+
+/* Target tier selector */
+.target-section { background: var(--bg2); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px; border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.target-section label { font-size: 13px; font-weight: 500; }
+
+/* Print styles */
+@media print {
+  body { background: #fff; color: #000; }
+  .nav-tabs, .actions-bar, .func-sidebar, button { display: none !important; }
+  .view-panel { display: block !important; }
+  .category-body { display: block !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>NIST CSF 2.0 Assessment Tool</h1>
+    <p>Cybersecurity Framework Assessment &mdash; 6 Functions &bull; 22 Categories &bull; 106 Subcategories</p>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-view="assess">Assessment</button>
+    <button class="nav-tab" data-view="heatmap">Heat Map</button>
+    <button class="nav-tab" data-view="dashboard">Dashboard</button>
+    <button class="nav-tab" data-view="gaps">Gap Analysis</button>
+  </div>
+
+  <!-- ===================== ASSESSMENT VIEW ===================== -->
+  <div id="view-assess" class="view-panel active">
+    <div class="info-bar">
+      <input type="text" id="orgName" placeholder="Organization Name" />
+      <input type="text" id="assessor" placeholder="Assessor Name" />
+      <input type="date" id="assessDate" />
+      <select id="companySize">
+        <option value="">-- Company Size --</option>
+        <option value="micro">Micro (&lt;10)</option>
+        <option value="small">Small (10-249)</option>
+        <option value="medium">Medium (250-999)</option>
+        <option value="large">Large (1,000-4,999)</option>
+        <option value="enterprise">Enterprise (5,000+)</option>
+      </select>
+      <select id="assessScope">
+        <option value="">-- Scope --</option>
+        <option value="Enterprise-wide">Enterprise-wide</option>
+        <option value="Business Unit">Business Unit</option>
+        <option value="System/Application">System/Application</option>
+        <option value="Third Party">Third Party</option>
+      </select>
+    </div>
+
+    <div class="target-section">
+      <span id="targetStatus" style="font-size:13px;color:var(--fg2);">Select company size and scope to auto-set target tiers</span>
+      <button class="btn btn-primary" id="btnApplyTargets" onclick="applyTargetProfile(false)" disabled style="padding:8px 14px;font-size:12px;">Apply Recommended Targets</button>
+      <button class="btn btn-secondary" id="btnResetTargets" onclick="applyTargetProfile(true)" disabled style="padding:8px 14px;font-size:12px;">Reset to Recommended</button>
+      <span style="color:var(--fg2);font-size:11px;opacity:0.7;">Targets set per-category. Override any subcategory individually.</span>
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-label"><span id="progressText">0 of 106 subcategories assessed</span><span id="progressPct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn btn-primary" onclick="expandAll()">Expand All</button>
+      <button class="btn btn-secondary" onclick="collapseAll()">Collapse All</button>
+      <button class="btn btn-success" onclick="exportExcel()">Export to Excel</button>
+      <button class="btn btn-secondary" onclick="saveToJSON()">Save Progress</button>
+      <button class="btn btn-secondary" onclick="loadFromJSON()">Load Progress</button>
+      <button class="btn btn-danger" onclick="resetAll()">Reset</button>
+    </div>
+
+    <div class="assessment-layout">
+      <div class="func-sidebar" id="funcSidebar"></div>
+      <div class="assessment-content" id="assessContent"></div>
+    </div>
+  </div>
+
+  <!-- ===================== HEATMAP VIEW ===================== -->
+  <div id="view-heatmap" class="view-panel">
+    <div class="actions-bar">
+      <button class="btn btn-success" onclick="exportExcel()">Export to Excel</button>
+    </div>
+    <div class="heatmap-container">
+      <h3 style="margin-bottom:8px;">Implementation Tier Heat Map</h3>
+      <p style="color:var(--fg2);font-size:13px;margin-bottom:16px;">Visual overview of current maturity across all subcategories. Hover for details.</p>
+      <div class="heatmap-legend" id="heatmapLegend"></div>
+      <div class="heatmap-grid" id="heatmapGrid"></div>
+    </div>
+  </div>
+
+  <!-- ===================== DASHBOARD VIEW ===================== -->
+  <div id="view-dashboard" class="view-panel">
+    <div class="actions-bar">
+      <button class="btn btn-success" onclick="exportExcel()">Export to Excel</button>
+    </div>
+    <div class="summary-cards" id="summaryCards"></div>
+    <div class="radar-section">
+      <h3>Function Maturity Radar</h3>
+      <div class="radar-canvas-wrap">
+        <canvas id="radarCanvas" width="460" height="460"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== GAP ANALYSIS VIEW ===================== -->
+  <div id="view-gaps" class="view-panel">
+    <div class="actions-bar">
+      <button class="btn btn-success" onclick="exportExcel()">Export to Excel</button>
+    </div>
+    <h3 style="margin-bottom:6px;">Gap Analysis: Current vs Target</h3>
+    <p style="color:var(--fg2);font-size:13px;margin-bottom:16px;">Subcategories where the current tier is below the target tier, sorted by largest gap.</p>
+    <div id="gapContent"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// NIST CSF 2.0 FRAMEWORK DATA
+// ============================================================
+const TIERS = [
+  { value: 0, label: "N/A", short: "N/A", color: "#64748b", bg: "#334155" },
+  { value: 1, label: "Tier 1 - Partial", short: "T1", color: "#fca5a5", bg: "#991b1b" },
+  { value: 2, label: "Tier 2 - Risk Informed", short: "T2", color: "#fde68a", bg: "#92400e" },
+  { value: 3, label: "Tier 3 - Repeatable", short: "T3", color: "#93c5fd", bg: "#1e3a5f" },
+  { value: 4, label: "Tier 4 - Adaptive", short: "T4", color: "#86efac", bg: "#14532d" }
+];
+
+const FUNCTIONS = [
+  { id: "GV", name: "GOVERN", color: "#6366f1",
+    desc: "The organization's cybersecurity risk management strategy, expectations, and policy are established, communicated, and monitored",
+    categories: [
+      { id: "GV.OC", name: "Organizational Context",
+        desc: "The circumstances surrounding the organization's cybersecurity risk management decisions are understood",
+        subs: [
+          { id: "GV.OC-01", desc: "The organizational mission is understood and informs cybersecurity risk management" },
+          { id: "GV.OC-02", desc: "Internal and external stakeholders are understood, and their needs and expectations regarding cybersecurity risk management are understood and considered" },
+          { id: "GV.OC-03", desc: "Legal, regulatory, and contractual requirements regarding cybersecurity - including privacy and civil liberties obligations - are understood and managed" },
+          { id: "GV.OC-04", desc: "Critical objectives, capabilities, and services that stakeholders depend on or expect from the organization are understood and communicated" },
+          { id: "GV.OC-05", desc: "Outcomes, capabilities, and services that the organization depends on are understood and communicated" }
+        ]},
+      { id: "GV.RM", name: "Risk Management Strategy",
+        desc: "The organization's priorities, constraints, risk tolerance and appetite statements, and assumptions are established, communicated, and used to support operational risk decisions",
+        subs: [
+          { id: "GV.RM-01", desc: "Risk management objectives are established and agreed to by organizational stakeholders" },
+          { id: "GV.RM-02", desc: "Risk appetite and risk tolerance statements are established, communicated, and maintained" },
+          { id: "GV.RM-03", desc: "Cybersecurity risk management activities and outcomes are included in enterprise risk management processes" },
+          { id: "GV.RM-04", desc: "Strategic direction that describes appropriate risk response options is established and communicated" },
+          { id: "GV.RM-05", desc: "Lines of communication across the organization are established for cybersecurity risks, including risks from suppliers and other third parties" },
+          { id: "GV.RM-06", desc: "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated" },
+          { id: "GV.RM-07", desc: "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions" }
+        ]},
+      { id: "GV.RR", name: "Roles, Responsibilities, and Authorities",
+        desc: "Cybersecurity roles, responsibilities, and authorities to foster accountability, performance assessment, and continuous improvement are established and communicated",
+        subs: [
+          { id: "GV.RR-01", desc: "Organizational leadership is responsible and accountable for cybersecurity risk and fosters a culture that is risk-aware, ethical, and continually improving" },
+          { id: "GV.RR-02", desc: "Roles, responsibilities, and authorities related to cybersecurity risk management are established, communicated, understood, and enforced" },
+          { id: "GV.RR-03", desc: "Adequate resources are allocated commensurate with the cybersecurity risk strategy, roles, responsibilities, and policies" },
+          { id: "GV.RR-04", desc: "Cybersecurity is included in human resources practices" }
+        ]},
+      { id: "GV.PO", name: "Policy",
+        desc: "Organizational cybersecurity policy is established, communicated, and enforced",
+        subs: [
+          { id: "GV.PO-01", desc: "Policy for managing cybersecurity risks is established based on organizational context, cybersecurity strategy, and priorities and is communicated and enforced" },
+          { id: "GV.PO-02", desc: "Policy for managing cybersecurity risks is reviewed, updated, communicated, and enforced to reflect changes in requirements, threats, technology, and organizational mission" }
+        ]},
+      { id: "GV.OV", name: "Oversight",
+        desc: "Results of organization-wide cybersecurity risk management activities and performance are used to inform, improve, and adjust the risk management strategy",
+        subs: [
+          { id: "GV.OV-01", desc: "Cybersecurity risk management strategy outcomes are reviewed to inform and adjust strategy and direction" },
+          { id: "GV.OV-02", desc: "The cybersecurity risk management strategy is reviewed and adjusted to ensure coverage of organizational requirements and risks" },
+          { id: "GV.OV-03", desc: "Organizational cybersecurity risk management performance is evaluated and reviewed for adjustments needed" }
+        ]},
+      { id: "GV.SC", name: "Cybersecurity Supply Chain Risk Management",
+        desc: "Cyber supply chain risk management processes are identified, established, managed, monitored, and improved by organizational stakeholders",
+        subs: [
+          { id: "GV.SC-01", desc: "A cybersecurity supply chain risk management program, strategy, objectives, policies, and processes are established and agreed to by organizational stakeholders" },
+          { id: "GV.SC-02", desc: "Cybersecurity roles and responsibilities for suppliers, customers, and partners are established, communicated, and coordinated internally and externally" },
+          { id: "GV.SC-03", desc: "Cybersecurity supply chain risk management is integrated into cybersecurity and enterprise risk management, risk assessment, and improvement processes" },
+          { id: "GV.SC-04", desc: "Suppliers are known and prioritized by criticality" },
+          { id: "GV.SC-05", desc: "Requirements to address cybersecurity risks in supply chains are established, prioritized, and integrated into contracts and other types of agreements with suppliers and other relevant third parties" },
+          { id: "GV.SC-06", desc: "Planning and due diligence are performed to reduce risks before entering into formal supplier or other third-party relationships" },
+          { id: "GV.SC-07", desc: "The risks posed by a supplier, their products and services, and other third parties are understood, recorded, prioritized, assessed, responded to, and monitored over the course of the relationship" },
+          { id: "GV.SC-08", desc: "Relevant suppliers and other third parties are included in incident planning, response, and recovery activities" },
+          { id: "GV.SC-09", desc: "Supply chain security practices are integrated into cybersecurity and enterprise risk management programs, and their performance is monitored throughout the technology product and service life cycle" },
+          { id: "GV.SC-10", desc: "Cybersecurity supply chain risk management plans include provisions for activities that occur after the conclusion of a partnership or service agreement" }
+        ]}
+    ]},
+  { id: "ID", name: "IDENTIFY", color: "#3b82f6",
+    desc: "The organization's current cybersecurity risks are understood",
+    categories: [
+      { id: "ID.AM", name: "Asset Management",
+        desc: "Assets that enable the organization to achieve business purposes are identified and managed consistent with their relative importance",
+        subs: [
+          { id: "ID.AM-01", desc: "Inventories of hardware managed by the organization are maintained" },
+          { id: "ID.AM-02", desc: "Inventories of software, services, and systems managed by the organization are maintained" },
+          { id: "ID.AM-03", desc: "Representations of the organization's authorized network communication and internal and external network data flows are maintained" },
+          { id: "ID.AM-04", desc: "Inventories of services provided by suppliers are maintained" },
+          { id: "ID.AM-05", desc: "Assets are prioritized based on classification, criticality, resources, and impact on the mission" },
+          { id: "ID.AM-07", desc: "Inventories of data and corresponding metadata for designated data types are maintained" },
+          { id: "ID.AM-08", desc: "Systems, hardware, software, services, and data are managed throughout their life cycles" }
+        ]},
+      { id: "ID.RA", name: "Risk Assessment",
+        desc: "The cybersecurity risk to the organization, assets, and individuals is understood",
+        subs: [
+          { id: "ID.RA-01", desc: "Vulnerabilities in assets are identified, validated, and recorded" },
+          { id: "ID.RA-02", desc: "Cyber threat intelligence is received from information sharing forums and sources" },
+          { id: "ID.RA-03", desc: "Internal and external threats to the organization are identified and recorded" },
+          { id: "ID.RA-04", desc: "Potential impacts and likelihoods of threats exploiting vulnerabilities are identified and recorded" },
+          { id: "ID.RA-05", desc: "Threats, vulnerabilities, likelihoods, and impacts are used to understand inherent risk and inform risk response prioritization" },
+          { id: "ID.RA-06", desc: "Risk responses are chosen, prioritized, planned, tracked, and communicated" },
+          { id: "ID.RA-07", desc: "Changes and exceptions are managed, assessed for risk impact, recorded, and tracked" },
+          { id: "ID.RA-08", desc: "Processes for receiving, analyzing, and responding to vulnerability disclosures are established" },
+          { id: "ID.RA-09", desc: "The authenticity and integrity of hardware and software are assessed prior to acquisition and use" },
+          { id: "ID.RA-10", desc: "Critical suppliers are assessed prior to acquisition" }
+        ]},
+      { id: "ID.IM", name: "Improvement",
+        desc: "Improvements to organizational cybersecurity risk management processes, procedures and activities are identified across all CSF Functions",
+        subs: [
+          { id: "ID.IM-01", desc: "Improvements are identified from evaluations" },
+          { id: "ID.IM-02", desc: "Improvements are identified from security tests and exercises, including those done in coordination with suppliers and relevant third parties" },
+          { id: "ID.IM-03", desc: "Improvements are identified from execution of operational processes, procedures, and activities" },
+          { id: "ID.IM-04", desc: "Incident response plans and other cybersecurity plans that affect operations are established, communicated, maintained, and improved" }
+        ]}
+    ]},
+  { id: "PR", name: "PROTECT", color: "#22c55e",
+    desc: "Safeguards to manage the organization's cybersecurity risks are used",
+    categories: [
+      { id: "PR.AA", name: "Identity Management, Authentication, and Access Control",
+        desc: "Access to physical and logical assets is limited to authorized users, services, and hardware and managed commensurate with the assessed risk",
+        subs: [
+          { id: "PR.AA-01", desc: "Identities and credentials for authorized users, services, and hardware are managed by the organization" },
+          { id: "PR.AA-02", desc: "Identities are proofed and bound to credentials based on the context of interactions" },
+          { id: "PR.AA-03", desc: "Users, services, and hardware are authenticated" },
+          { id: "PR.AA-04", desc: "Identity assertions are protected, conveyed, and verified" },
+          { id: "PR.AA-05", desc: "Access permissions, entitlements, and authorizations are defined in a policy, managed, enforced, and reviewed, and incorporate the principles of least privilege and separation of duties" },
+          { id: "PR.AA-06", desc: "Physical access to assets is managed, monitored, and enforced commensurate with risk" }
+        ]},
+      { id: "PR.AT", name: "Awareness and Training",
+        desc: "The organization's personnel are provided cybersecurity awareness and training so that they can perform their cybersecurity-related tasks",
+        subs: [
+          { id: "PR.AT-01", desc: "Personnel are provided with awareness and training so that they possess the knowledge and skills to perform general tasks with cybersecurity risks in mind" },
+          { id: "PR.AT-02", desc: "Individuals in specialized roles are provided with awareness and training so that they possess the knowledge and skills to perform relevant tasks with cybersecurity risks in mind" }
+        ]},
+      { id: "PR.DS", name: "Data Security",
+        desc: "Data are managed consistent with the organization's risk strategy to protect the confidentiality, integrity, and availability of information",
+        subs: [
+          { id: "PR.DS-01", desc: "The confidentiality, integrity, and availability of data-at-rest are protected" },
+          { id: "PR.DS-02", desc: "The confidentiality, integrity, and availability of data-in-transit are protected" },
+          { id: "PR.DS-10", desc: "The confidentiality, integrity, and availability of data-in-use are protected" },
+          { id: "PR.DS-11", desc: "Backups of data are created, protected, maintained, and tested" }
+        ]},
+      { id: "PR.PS", name: "Platform Security",
+        desc: "The hardware, software, and services of physical and virtual platforms are managed consistent with the organization's risk strategy",
+        subs: [
+          { id: "PR.PS-01", desc: "Configuration management practices are established and applied" },
+          { id: "PR.PS-02", desc: "Software is maintained, replaced, and removed commensurate with risk" },
+          { id: "PR.PS-03", desc: "Hardware is maintained, replaced, and removed commensurate with risk" },
+          { id: "PR.PS-04", desc: "Log records are generated and made available for continuous monitoring" },
+          { id: "PR.PS-05", desc: "Installation and execution of unauthorized software are prevented" },
+          { id: "PR.PS-06", desc: "Secure software development practices are integrated, and their performance is monitored throughout the software development life cycle" }
+        ]},
+      { id: "PR.IR", name: "Technology Infrastructure Resilience",
+        desc: "Security architectures are managed with the organization's risk strategy to protect asset confidentiality, integrity, and availability, and organizational resilience",
+        subs: [
+          { id: "PR.IR-01", desc: "Networks and environments are protected from unauthorized logical access and usage" },
+          { id: "PR.IR-02", desc: "The organization's technology assets are protected from environmental threats" },
+          { id: "PR.IR-03", desc: "Mechanisms are implemented to achieve resilience requirements in normal and adverse situations" },
+          { id: "PR.IR-04", desc: "Adequate resource capacity to ensure availability is maintained" }
+        ]}
+    ]},
+  { id: "DE", name: "DETECT", color: "#f59e0b",
+    desc: "Possible cybersecurity attacks and compromises are found and analyzed",
+    categories: [
+      { id: "DE.CM", name: "Continuous Monitoring",
+        desc: "Assets are monitored to find anomalies, indicators of compromise, and other potentially adverse events",
+        subs: [
+          { id: "DE.CM-01", desc: "Networks and network services are monitored to find potentially adverse events" },
+          { id: "DE.CM-02", desc: "The physical environment is monitored to find potentially adverse events" },
+          { id: "DE.CM-03", desc: "Personnel activity and technology usage are monitored to find potentially adverse events" },
+          { id: "DE.CM-06", desc: "External service provider activities and services are monitored to find potentially adverse events" },
+          { id: "DE.CM-09", desc: "Computing hardware and software, runtime environments, and their data are monitored to find potentially adverse events" }
+        ]},
+      { id: "DE.AE", name: "Adverse Event Analysis",
+        desc: "Anomalies, indicators of compromise, and other potentially adverse events are analyzed to characterize the events and detect cybersecurity incidents",
+        subs: [
+          { id: "DE.AE-02", desc: "Potentially adverse events are analyzed to better understand associated activities" },
+          { id: "DE.AE-03", desc: "Information is correlated from multiple sources" },
+          { id: "DE.AE-04", desc: "The estimated impact and scope of adverse events are understood" },
+          { id: "DE.AE-06", desc: "Information on adverse events is provided to authorized staff and tools" },
+          { id: "DE.AE-07", desc: "Cyber threat intelligence and other contextual information are integrated into the analysis" },
+          { id: "DE.AE-08", desc: "Incidents are declared when adverse events meet the defined incident criteria" }
+        ]}
+    ]},
+  { id: "RS", name: "RESPOND", color: "#ef4444",
+    desc: "Actions regarding a detected cybersecurity incident are taken",
+    categories: [
+      { id: "RS.MA", name: "Incident Management",
+        desc: "Responses to detected cybersecurity incidents are managed",
+        subs: [
+          { id: "RS.MA-01", desc: "The incident response plan is executed in coordination with relevant third parties once an incident is declared" },
+          { id: "RS.MA-02", desc: "Incident reports are triaged and validated" },
+          { id: "RS.MA-03", desc: "Incidents are categorized and prioritized" },
+          { id: "RS.MA-04", desc: "Incidents are escalated or elevated as needed" },
+          { id: "RS.MA-05", desc: "The criteria for initiating incident recovery are applied" }
+        ]},
+      { id: "RS.AN", name: "Incident Analysis",
+        desc: "Investigations are conducted to ensure effective response and support forensics and recovery activities",
+        subs: [
+          { id: "RS.AN-03", desc: "Analysis is performed to establish what has taken place during an incident and the root cause of the incident" },
+          { id: "RS.AN-06", desc: "Actions performed during an investigation are recorded, and the records' integrity and provenance are preserved" },
+          { id: "RS.AN-07", desc: "Incident data and metadata are collected, and their integrity and provenance are preserved" },
+          { id: "RS.AN-08", desc: "An incident's magnitude is estimated and validated" }
+        ]},
+      { id: "RS.CO", name: "Incident Response Reporting and Communication",
+        desc: "Response activities are coordinated with internal and external stakeholders as required by laws, regulations, or policies",
+        subs: [
+          { id: "RS.CO-02", desc: "Internal and external stakeholders are notified of incidents" },
+          { id: "RS.CO-03", desc: "Information is shared with designated internal and external stakeholders" }
+        ]},
+      { id: "RS.MI", name: "Incident Mitigation",
+        desc: "Activities are performed to prevent expansion of an event and mitigate its effects",
+        subs: [
+          { id: "RS.MI-01", desc: "Incidents are contained" },
+          { id: "RS.MI-02", desc: "Incidents are eradicated" }
+        ]}
+    ]},
+  { id: "RC", name: "RECOVER", color: "#8b5cf6",
+    desc: "Assets and operations affected by a cybersecurity incident are restored",
+    categories: [
+      { id: "RC.RP", name: "Incident Recovery Plan Execution",
+        desc: "Restoration activities are performed to ensure operational availability of systems and services affected by cybersecurity incidents",
+        subs: [
+          { id: "RC.RP-01", desc: "The recovery portion of the incident response plan is executed once initiated from the incident response process" },
+          { id: "RC.RP-02", desc: "Recovery actions are selected, scoped, prioritized, and performed" },
+          { id: "RC.RP-03", desc: "The integrity of backups and other restoration assets is verified before using them for restoration" },
+          { id: "RC.RP-04", desc: "Critical mission functions and cybersecurity risk management are considered to establish post-incident operational norms" },
+          { id: "RC.RP-05", desc: "The integrity of restored assets is verified, systems and services are restored, and normal operating status is confirmed" },
+          { id: "RC.RP-06", desc: "The end of incident recovery is declared based on criteria, and incident-related documentation is completed" }
+        ]},
+      { id: "RC.CO", name: "Incident Recovery Communication",
+        desc: "Restoration activities are coordinated with internal and external parties",
+        subs: [
+          { id: "RC.CO-03", desc: "Recovery activities and progress in restoring operational capabilities are communicated to designated internal and external stakeholders" },
+          { id: "RC.CO-04", desc: "Public updates on incident recovery are shared using approved methods and messaging" }
+        ]}
+    ]}
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  responses: {},   // { "GV.OC-01": { current: 2, target: 3, notes: "" } }
+  activeFunction: "GV",
+  companySize: "",
+  manualTargets: new Set()
+};
+
+// ============================================================
+// TARGET TIER PROFILES (base per size + scope adjustments)
+// ============================================================
+const TARGET_PROFILES = {
+  base: {
+    micro:      { "GV.OC":1,"GV.RM":1,"GV.RR":1,"GV.PO":1,"GV.OV":1,"GV.SC":1, "ID.AM":2,"ID.RA":1,"ID.IM":1, "PR.AA":2,"PR.DS":2,"PR.PS":2,"PR.AT":1,"PR.IR":1, "DE.CM":2,"DE.AE":1, "RS.MA":1,"RS.AN":1,"RS.CO":1,"RS.MI":1, "RC.RP":1,"RC.CO":1 },
+    small:      { "GV.OC":2,"GV.RM":2,"GV.RR":2,"GV.PO":2,"GV.OV":1,"GV.SC":1, "ID.AM":2,"ID.RA":2,"ID.IM":2, "PR.AA":2,"PR.DS":2,"PR.PS":2,"PR.AT":2,"PR.IR":2, "DE.CM":2,"DE.AE":2, "RS.MA":2,"RS.AN":2,"RS.CO":2,"RS.MI":2, "RC.RP":2,"RC.CO":1 },
+    medium:     { "GV.OC":3,"GV.RM":3,"GV.RR":3,"GV.PO":3,"GV.OV":2,"GV.SC":2, "ID.AM":3,"ID.RA":3,"ID.IM":2, "PR.AA":3,"PR.DS":3,"PR.PS":3,"PR.AT":2,"PR.IR":2, "DE.CM":3,"DE.AE":2, "RS.MA":3,"RS.AN":2,"RS.CO":2,"RS.MI":2, "RC.RP":2,"RC.CO":2 },
+    large:      { "GV.OC":3,"GV.RM":3,"GV.RR":3,"GV.PO":3,"GV.OV":3,"GV.SC":3, "ID.AM":3,"ID.RA":3,"ID.IM":3, "PR.AA":4,"PR.DS":3,"PR.PS":3,"PR.AT":3,"PR.IR":3, "DE.CM":4,"DE.AE":3, "RS.MA":3,"RS.AN":3,"RS.CO":3,"RS.MI":3, "RC.RP":3,"RC.CO":3 },
+    enterprise: { "GV.OC":4,"GV.RM":4,"GV.RR":4,"GV.PO":4,"GV.OV":4,"GV.SC":4, "ID.AM":4,"ID.RA":4,"ID.IM":3, "PR.AA":4,"PR.DS":4,"PR.PS":4,"PR.AT":3,"PR.IR":3, "DE.CM":4,"DE.AE":4, "RS.MA":4,"RS.AN":3,"RS.CO":3,"RS.MI":3, "RC.RP":3,"RC.CO":3 }
+  },
+  scopeAdj: {
+    "Enterprise-wide":    { "GV.OC":0,"GV.RM":0,"GV.RR":0,"GV.PO":0,"GV.OV":0,"GV.SC":0, "ID.AM":0,"ID.RA":0,"ID.IM":0, "PR.AA":0,"PR.DS":0,"PR.PS":0,"PR.AT":0,"PR.IR":0, "DE.CM":0,"DE.AE":0, "RS.MA":0,"RS.AN":0,"RS.CO":0,"RS.MI":0, "RC.RP":0,"RC.CO":0 },
+    "Business Unit":      { "GV.OC":-1,"GV.RM":0,"GV.RR":-1,"GV.PO":-1,"GV.OV":-1,"GV.SC":0, "ID.AM":0,"ID.RA":0,"ID.IM":-1, "PR.AA":0,"PR.DS":0,"PR.PS":0,"PR.AT":0,"PR.IR":0, "DE.CM":0,"DE.AE":0, "RS.MA":0,"RS.AN":0,"RS.CO":-1,"RS.MI":0, "RC.RP":0,"RC.CO":-1 },
+    "System/Application": { "GV.OC":-2,"GV.RM":-1,"GV.RR":-2,"GV.PO":-2,"GV.OV":-2,"GV.SC":-1, "ID.AM":0,"ID.RA":0,"ID.IM":-1, "PR.AA":1,"PR.DS":1,"PR.PS":1,"PR.AT":-1,"PR.IR":0, "DE.CM":1,"DE.AE":0, "RS.MA":-1,"RS.AN":0,"RS.CO":-2,"RS.MI":0, "RC.RP":0,"RC.CO":-2 },
+    "Third Party":        { "GV.OC":0,"GV.RM":0,"GV.RR":0,"GV.PO":0,"GV.OV":1,"GV.SC":1, "ID.AM":0,"ID.RA":1,"ID.IM":0, "PR.AA":1,"PR.DS":1,"PR.PS":0,"PR.AT":0,"PR.IR":0, "DE.CM":0,"DE.AE":0, "RS.MA":0,"RS.AN":-1,"RS.CO":1,"RS.MI":-1, "RC.RP":-1,"RC.CO":1 }
+  }
+};
+
+// Count total subcategories
+let TOTAL_SUBS = 0;
+FUNCTIONS.forEach(f => f.categories.forEach(c => { TOTAL_SUBS += c.subs.length; }));
+
+// ============================================================
+// VIEW SWITCHING
+// ============================================================
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    if (tab.dataset.view === 'heatmap') renderHeatmap();
+    if (tab.dataset.view === 'dashboard') renderDashboard();
+    if (tab.dataset.view === 'gaps') renderGaps();
+  });
+});
+
+// ============================================================
+// TARGET PROFILE LOGIC
+// ============================================================
+function getEffectiveTarget(catId, size, scope) {
+  const base = TARGET_PROFILES.base[size]?.[catId];
+  const adj = TARGET_PROFILES.scopeAdj[scope]?.[catId];
+  if (base === undefined || adj === undefined) return null;
+  return Math.max(1, Math.min(4, base + adj));
+}
+
+function getSubcatTarget(subId) {
+  const r = state.responses[subId];
+  if (r?.target !== undefined) return r.target;
+  // Derive from profile if available
+  const size = state.companySize;
+  const scope = document.getElementById('assessScope').value;
+  if (size && scope) {
+    const catId = subId.replace(/-\d+$/, '');
+    const t = getEffectiveTarget(catId, size, scope);
+    if (t !== null) return t;
+  }
+  return 0; // no target set
+}
+
+function applyTargetProfile(forceReset) {
+  const size = document.getElementById('companySize').value;
+  const scope = document.getElementById('assessScope').value;
+  if (!size || !scope) return;
+
+  state.companySize = size;
+  if (forceReset) state.manualTargets = new Set();
+
+  FUNCTIONS.forEach(fn => fn.categories.forEach(cat => {
+    const tier = getEffectiveTarget(cat.id, size, scope);
+    if (tier === null) return;
+    cat.subs.forEach(sub => {
+      if (!forceReset && state.manualTargets.has(sub.id)) return;
+      if (!state.responses[sub.id]) state.responses[sub.id] = {};
+      state.responses[sub.id].target = tier;
+    });
+  }));
+
+  updateTargetStatus();
+  buildSidebar();
+  buildContent();
+}
+
+function updateTargetStatus() {
+  const size = document.getElementById('companySize').value;
+  const scope = document.getElementById('assessScope').value;
+  const statusEl = document.getElementById('targetStatus');
+  const applyBtn = document.getElementById('btnApplyTargets');
+  const resetBtn = document.getElementById('btnResetTargets');
+
+  if (size && scope) {
+    const sizeLabel = document.getElementById('companySize').selectedOptions[0].text;
+    const scopeLabel = scope;
+    statusEl.innerHTML = `Target profile: <strong style="color:var(--fg)">${sizeLabel} + ${scopeLabel}</strong>`;
+    statusEl.style.color = 'var(--clr-govern)';
+    applyBtn.disabled = false;
+    resetBtn.disabled = false;
+  } else {
+    statusEl.textContent = 'Select company size and scope to auto-set target tiers';
+    statusEl.style.color = 'var(--fg2)';
+    applyBtn.disabled = true;
+    resetBtn.disabled = true;
+  }
+}
+
+// Auto-apply when both dropdowns are set
+document.getElementById('companySize').addEventListener('change', () => {
+  state.companySize = document.getElementById('companySize').value;
+  const scope = document.getElementById('assessScope').value;
+  if (state.companySize && scope) applyTargetProfile(false);
+  else updateTargetStatus();
+});
+document.getElementById('assessScope').addEventListener('change', () => {
+  const size = document.getElementById('companySize').value;
+  const scope = document.getElementById('assessScope').value;
+  if (size && scope) applyTargetProfile(false);
+  else updateTargetStatus();
+});
+
+// ============================================================
+// BUILD ASSESSMENT UI
+// ============================================================
+function buildSidebar() {
+  const sb = document.getElementById('funcSidebar');
+  sb.innerHTML = '';
+  FUNCTIONS.forEach(fn => {
+    let total = 0, answered = 0;
+    fn.categories.forEach(c => {
+      total += c.subs.length;
+      c.subs.forEach(s => { if (state.responses[s.id]?.current !== undefined) answered++; });
+    });
+    const btn = document.createElement('button');
+    btn.className = 'func-btn' + (fn.id === state.activeFunction ? ' active' : '');
+    btn.dataset.fn = fn.id;
+    btn.innerHTML = `<span class="badge"></span>${fn.name}<span class="count">${answered}/${total}</span>`;
+    btn.onclick = () => {
+      state.activeFunction = fn.id;
+      buildSidebar();
+      buildContent();
+    };
+    sb.appendChild(btn);
+  });
+}
+
+function buildContent() {
+  const wrap = document.getElementById('assessContent');
+  wrap.innerHTML = '';
+  const fn = FUNCTIONS.find(f => f.id === state.activeFunction);
+  if (!fn) return;
+
+  fn.categories.forEach(cat => {
+    const card = document.createElement('div');
+    card.className = 'category-card';
+    card.innerHTML = `
+      <div class="category-header" onclick="this.querySelector('.chevron').classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+        <h3>${cat.name} <span class="cat-id">${cat.id}</span></h3>
+        <span class="chevron">&#9660;</span>
+      </div>
+      <div class="category-body open">
+        ${cat.subs.map(sub => buildSubcatRow(sub, fn)).join('')}
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+
+  // Attach events
+  wrap.querySelectorAll('.tier-btn[data-sub]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const subId = btn.dataset.sub;
+      const type = btn.dataset.type;
+      const val = parseInt(btn.dataset.val);
+      if (!state.responses[subId]) state.responses[subId] = {};
+      state.responses[subId][type] = val;
+      if (type === 'target') state.manualTargets.add(subId);
+      // Update button styles in row
+      const row = btn.closest('.subcat-row');
+      row.querySelectorAll(`.tier-btn[data-type="${type}"]`).forEach(b => {
+        b.className = 'tier-btn' + (parseInt(b.dataset.val) === val ? ` selected-${val}` : '');
+      });
+      updateProgress();
+      buildSidebar();
+    });
+  });
+
+  wrap.querySelectorAll('.notes-input').forEach(input => {
+    input.addEventListener('input', () => {
+      const subId = input.dataset.sub;
+      if (!state.responses[subId]) state.responses[subId] = {};
+      state.responses[subId].notes = input.value;
+    });
+  });
+
+  updateProgress();
+}
+
+function buildSubcatRow(sub, fn) {
+  const r = state.responses[sub.id] || {};
+  const tierBtns = (type) => TIERS.map(t =>
+    `<button class="tier-btn${r[type] === t.value ? ` selected-${t.value}` : ''}" data-sub="${sub.id}" data-type="${type}" data-val="${t.value}">${t.short}</button>`
+  ).join('');
+
+  return `
+    <div class="subcat-row">
+      <div class="subcat-id">${sub.id}</div>
+      <div class="subcat-desc">${sub.desc}</div>
+      <div class="subcat-controls">
+        <div class="tier-group">
+          <span class="tier-label">Current Tier</span>
+          <div class="tier-btns">${tierBtns('current')}</div>
+        </div>
+        <div class="tier-group">
+          <span class="tier-label">Target Tier</span>
+          <div class="tier-btns">${tierBtns('target')}</div>
+        </div>
+        <textarea class="notes-input" data-sub="${sub.id}" placeholder="Notes / evidence...">${r.notes || ''}</textarea>
+      </div>
+    </div>`;
+}
+
+function updateProgress() {
+  let answered = 0;
+  FUNCTIONS.forEach(f => f.categories.forEach(c => c.subs.forEach(s => {
+    if (state.responses[s.id]?.current !== undefined) answered++;
+  })));
+  const pct = Math.round((answered / TOTAL_SUBS) * 100);
+  document.getElementById('progressText').textContent = `${answered} of ${TOTAL_SUBS} subcategories assessed`;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function expandAll() {
+  document.querySelectorAll('.category-body').forEach(b => b.classList.add('open'));
+  document.querySelectorAll('.chevron').forEach(c => c.classList.add('open'));
+}
+function collapseAll() {
+  document.querySelectorAll('.category-body').forEach(b => b.classList.remove('open'));
+  document.querySelectorAll('.chevron').forEach(c => c.classList.remove('open'));
+}
+
+// ============================================================
+// HEATMAP
+// ============================================================
+function renderHeatmap() {
+  // Legend
+  const legend = document.getElementById('heatmapLegend');
+  legend.innerHTML = TIERS.map(t =>
+    `<div class="legend-item"><div class="legend-swatch" style="background:${t.bg}"></div>${t.short} - ${t.label.replace(/Tier \d - /, '')}</div>`
+  ).join('');
+
+  const grid = document.getElementById('heatmapGrid');
+  grid.innerHTML = '';
+
+  FUNCTIONS.forEach(fn => {
+    const section = document.createElement('div');
+    section.className = 'heatmap-function';
+    let catsHTML = '';
+    fn.categories.forEach(cat => {
+      let cellsHTML = '';
+      cat.subs.forEach(sub => {
+        const r = state.responses[sub.id];
+        const tier = r?.current;
+        const t = tier !== undefined ? TIERS[tier] : { bg: '#1e293b', short: '?', color: '#64748b' };
+        cellsHTML += `<div class="heatmap-cell" style="background:${t.bg};color:${t.color}">
+          ${sub.id.split('.').pop()}
+          <div class="tooltip"><strong>${sub.id}</strong><br>${sub.desc}<br><br>Current: ${tier !== undefined ? TIERS[tier].label : 'Not assessed'}</div>
+        </div>`;
+      });
+      catsHTML += `<div class="heatmap-cat"><div class="heatmap-cat-title">${cat.id} ${cat.name}</div><div class="heatmap-cells">${cellsHTML}</div></div>`;
+    });
+
+    section.innerHTML = `<div class="heatmap-fn-title"><div class="dot" style="background:${fn.color}"></div>${fn.id} - ${fn.name}</div><div class="heatmap-cats">${catsHTML}</div>`;
+    grid.appendChild(section);
+  });
+}
+
+// ============================================================
+// DASHBOARD / RADAR
+// ============================================================
+function getFunctionScore(fn) {
+  let sum = 0, count = 0;
+  fn.categories.forEach(c => c.subs.forEach(s => {
+    const r = state.responses[s.id];
+    if (r?.current !== undefined && r.current > 0) { sum += r.current; count++; }
+  }));
+  return count > 0 ? sum / count : 0;
+}
+
+function getCategoryScore(cat) {
+  let sum = 0, count = 0;
+  cat.subs.forEach(s => {
+    const r = state.responses[s.id];
+    if (r?.current !== undefined && r.current > 0) { sum += r.current; count++; }
+  });
+  return count > 0 ? sum / count : 0;
+}
+
+function renderDashboard() {
+  const cards = document.getElementById('summaryCards');
+  let overallSum = 0, overallCount = 0;
+
+  let html = '';
+  FUNCTIONS.forEach(fn => {
+    const score = getFunctionScore(fn);
+    overallSum += score;
+    overallCount++;
+    const pct = (score / 4) * 100;
+    html += `<div class="summary-card">
+      <div class="score" style="color:${fn.color}">${score.toFixed(1)}</div>
+      <div class="label">${fn.name}</div>
+      <div class="bar"><div class="bar-fill" style="width:${pct}%;background:${fn.color}"></div></div>
+    </div>`;
+  });
+
+  const overall = overallCount > 0 ? overallSum / overallCount : 0;
+  html = `<div class="summary-card">
+    <div class="score" style="color:#f1f5f9">${overall.toFixed(1)}</div>
+    <div class="label">OVERALL SCORE</div>
+    <div class="bar"><div class="bar-fill" style="width:${(overall/4)*100}%;background:linear-gradient(90deg,var(--clr-govern),var(--clr-recover))"></div></div>
+  </div>` + html;
+
+  cards.innerHTML = html;
+  drawRadar();
+}
+
+function drawRadar() {
+  const canvas = document.getElementById('radarCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const R = 180;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const n = FUNCTIONS.length;
+  const angleStep = (2 * Math.PI) / n;
+  const startAngle = -Math.PI / 2;
+
+  // Draw grid
+  for (let level = 1; level <= 4; level++) {
+    const r = (level / 4) * R;
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const angle = startAngle + i * angleStep;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(148,163,184,0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Tier label
+    ctx.fillStyle = '#64748b';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('T' + level, cx, cy - r - 4);
+  }
+
+  // Draw axes
+  for (let i = 0; i < n; i++) {
+    const angle = startAngle + i * angleStep;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle));
+    ctx.strokeStyle = 'rgba(148,163,184,0.15)';
+    ctx.stroke();
+  }
+
+  // Draw target polygon
+  const targetPoints = [];
+  FUNCTIONS.forEach((fn, i) => {
+    let tSum = 0, tCount = 0;
+    fn.categories.forEach(c => c.subs.forEach(s => {
+      const t = getSubcatTarget(s.id);
+      if (t > 0) { tSum += t; tCount++; }
+    }));
+    const tScore = tCount > 0 ? tSum / tCount : 0;
+    const angle = startAngle + i * angleStep;
+    const r = (tScore / 4) * R;
+    targetPoints.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+  });
+
+  ctx.beginPath();
+  targetPoints.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(248,113,113,0.6)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw current polygon
+  const points = [];
+  FUNCTIONS.forEach((fn, i) => {
+    const score = getFunctionScore(fn);
+    const angle = startAngle + i * angleStep;
+    const r = (score / 4) * R;
+    points.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+  });
+
+  ctx.beginPath();
+  points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(99,102,241,0.15)';
+  ctx.fill();
+  ctx.strokeStyle = '#6366f1';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Dots & labels
+  FUNCTIONS.forEach((fn, i) => {
+    const score = getFunctionScore(fn);
+    const angle = startAngle + i * angleStep;
+    const r = (score / 4) * R;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = fn.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label
+    const lx = cx + (R + 30) * Math.cos(angle);
+    const ly = cy + (R + 30) * Math.sin(angle);
+    ctx.fillStyle = fn.color;
+    ctx.font = 'bold 12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(fn.id, lx, ly - 8);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px system-ui';
+    ctx.fillText(score.toFixed(1), lx, ly + 6);
+  });
+
+  // Legend
+  ctx.fillStyle = '#6366f1';
+  ctx.fillRect(10, H - 30, 12, 12);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'left';
+  ctx.fillText('Current', 28, H - 20);
+
+  ctx.strokeStyle = 'rgba(248,113,113,0.6)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath(); ctx.moveTo(100, H - 24); ctx.lineTo(130, H - 24); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('Target', 136, H - 20);
+}
+
+// ============================================================
+// GAP ANALYSIS
+// ============================================================
+function renderGaps() {
+  const wrap = document.getElementById('gapContent');
+  const gaps = [];
+
+  FUNCTIONS.forEach(fn => fn.categories.forEach(cat => cat.subs.forEach(sub => {
+    const r = state.responses[sub.id] || {};
+    const current = r.current !== undefined ? r.current : null;
+    const target = getSubcatTarget(sub.id);
+    if (current !== null && target > 0 && current < target) {
+      gaps.push({ id: sub.id, desc: sub.desc, current, target, gap: target - current, fn: fn.id, fnName: fn.name, cat: cat.id, notes: r.notes || '' });
+    }
+  })));
+
+  gaps.sort((a, b) => b.gap - a.gap);
+
+  if (gaps.length === 0) {
+    wrap.innerHTML = '<p style="color:var(--fg2);padding:40px;text-align:center;">No gaps identified. Complete the assessment and set target tiers to see gap analysis.</p>';
+    return;
+  }
+
+  let rows = gaps.map(g => {
+    const badgeColor = g.gap >= 3 ? '#dc2626' : g.gap >= 2 ? '#f59e0b' : '#3b82f6';
+    return `<tr>
+      <td style="font-weight:600">${g.id}</td>
+      <td style="max-width:300px">${g.desc}</td>
+      <td>${g.fn}</td>
+      <td><span class="gap-badge" style="background:${TIERS[g.current].bg};color:${TIERS[g.current].color}">${TIERS[g.current].short}</span></td>
+      <td><span class="gap-badge" style="background:${TIERS[g.target].bg};color:${TIERS[g.target].color}">${TIERS[g.target].short}</span></td>
+      <td><span class="gap-badge" style="background:${badgeColor};color:#fff">${g.gap}</span></td>
+      <td style="color:var(--fg2);font-size:12px;">${g.notes}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<p style="color:var(--fg2);margin-bottom:12px;font-size:13px;">${gaps.length} gaps identified across ${new Set(gaps.map(g=>g.fn)).size} functions</p>
+    <table class="gap-table">
+      <thead><tr><th>ID</th><th>Subcategory</th><th>Function</th><th>Current</th><th>Target</th><th>Gap</th><th>Notes</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ============================================================
+// EXCEL EXPORT (using native XLSX XML Spreadsheet format)
+// ============================================================
+function exportExcel() {
+  const org = document.getElementById('orgName').value || 'Organization';
+  const assessor = document.getElementById('assessor').value || '';
+  const date = document.getElementById('assessDate').value || new Date().toISOString().slice(0, 10);
+  const scope = document.getElementById('assessScope').value || '';
+
+  // Build rows for Assessment sheet
+  let assessRows = [];
+  FUNCTIONS.forEach(fn => {
+    fn.categories.forEach(cat => {
+      cat.subs.forEach(sub => {
+        const r = state.responses[sub.id] || {};
+        const current = r.current !== undefined ? TIERS[r.current].label : '';
+        const currentVal = r.current !== undefined ? r.current : '';
+        const targetVal = getSubcatTarget(sub.id);
+        const target = targetVal > 0 ? TIERS[targetVal].label : '';
+        const gap = (r.current !== undefined && targetVal > 0) ? Math.max(0, targetVal - r.current) : '';
+        assessRows.push([fn.id, fn.name, cat.id, cat.name, sub.id, sub.desc, current, currentVal, target, targetVal, gap, r.notes || '']);
+      });
+    });
+  });
+
+  // Build rows for Summary sheet
+  let summaryRows = [];
+  FUNCTIONS.forEach(fn => {
+    const score = getFunctionScore(fn);
+    summaryRows.push([fn.id, fn.name, score.toFixed(2), fn.categories.length]);
+    fn.categories.forEach(cat => {
+      const cs = getCategoryScore(cat);
+      summaryRows.push(['', cat.id + ' ' + cat.name, cs.toFixed(2), cat.subs.length]);
+    });
+  });
+
+  // Build XML Spreadsheet 2003 format
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="header"><Font ss:Bold="1" ss:Size="11"/><Interior ss:Color="#334155" ss:Pattern="Solid"/><Font ss:Color="#FFFFFF" ss:Bold="1"/></Style>
+  <Style ss:ID="title"><Font ss:Bold="1" ss:Size="14"/></Style>
+  <Style ss:ID="info"><Font ss:Size="11"/></Style>
+  <Style ss:ID="gap-high"><Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="gap-med"><Interior ss:Color="#FEF3C7" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="gap-low"><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/></Style>
+ </Styles>
+
+ <Worksheet ss:Name="Assessment Details">
+  <Table>
+   <Column ss:Width="50"/><Column ss:Width="90"/><Column ss:Width="65"/><Column ss:Width="180"/>
+   <Column ss:Width="80"/><Column ss:Width="350"/><Column ss:Width="120"/><Column ss:Width="50"/>
+   <Column ss:Width="120"/><Column ss:Width="50"/><Column ss:Width="50"/><Column ss:Width="250"/>
+   <Row ss:StyleID="title"><Cell><Data ss:Type="String">NIST CSF 2.0 Assessment - ${esc(org)}</Data></Cell></Row>
+   <Row ss:StyleID="info"><Cell><Data ss:Type="String">Assessor: ${esc(assessor)}</Data></Cell><Cell/><Cell><Data ss:Type="String">Date: ${esc(date)}</Data></Cell><Cell/><Cell><Data ss:Type="String">Scope: ${esc(scope)}</Data></Cell></Row>
+   <Row/>
+   <Row ss:StyleID="header">
+    <Cell><Data ss:Type="String">Function ID</Data></Cell>
+    <Cell><Data ss:Type="String">Function</Data></Cell>
+    <Cell><Data ss:Type="String">Category ID</Data></Cell>
+    <Cell><Data ss:Type="String">Category</Data></Cell>
+    <Cell><Data ss:Type="String">Subcategory ID</Data></Cell>
+    <Cell><Data ss:Type="String">Description</Data></Cell>
+    <Cell><Data ss:Type="String">Current Tier</Data></Cell>
+    <Cell><Data ss:Type="String">Current (1-4)</Data></Cell>
+    <Cell><Data ss:Type="String">Target Tier</Data></Cell>
+    <Cell><Data ss:Type="String">Target (1-4)</Data></Cell>
+    <Cell><Data ss:Type="String">Gap</Data></Cell>
+    <Cell><Data ss:Type="String">Notes</Data></Cell>
+   </Row>`;
+
+  assessRows.forEach(row => {
+    const gapVal = row[10];
+    let style = '';
+    if (gapVal >= 3) style = ' ss:StyleID="gap-high"';
+    else if (gapVal >= 2) style = ' ss:StyleID="gap-med"';
+    else if (gapVal >= 1) style = ' ss:StyleID="gap-low"';
+    xml += `\n   <Row${style}>`;
+    row.forEach((cell, i) => {
+      const type = (i === 7 || i === 9 || i === 10) && cell !== '' ? 'Number' : 'String';
+      xml += `<Cell><Data ss:Type="${type}">${esc(cell)}</Data></Cell>`;
+    });
+    xml += `</Row>`;
+  });
+
+  xml += `\n  </Table>\n </Worksheet>
+
+ <Worksheet ss:Name="Summary Scores">
+  <Table>
+   <Column ss:Width="60"/><Column ss:Width="280"/><Column ss:Width="100"/><Column ss:Width="100"/>
+   <Row ss:StyleID="title"><Cell><Data ss:Type="String">NIST CSF 2.0 Summary - ${esc(org)}</Data></Cell></Row>
+   <Row/>
+   <Row ss:StyleID="header">
+    <Cell><Data ss:Type="String">ID</Data></Cell>
+    <Cell><Data ss:Type="String">Function / Category</Data></Cell>
+    <Cell><Data ss:Type="String">Avg Score</Data></Cell>
+    <Cell><Data ss:Type="String">Items</Data></Cell>
+   </Row>`;
+
+  summaryRows.forEach(row => {
+    xml += `\n   <Row>`;
+    row.forEach((cell, i) => {
+      const type = (i === 2 || i === 3) ? 'Number' : 'String';
+      xml += `<Cell><Data ss:Type="${type}">${esc(cell)}</Data></Cell>`;
+    });
+    xml += `</Row>`;
+  });
+
+  xml += `\n  </Table>\n </Worksheet>
+
+ <Worksheet ss:Name="Gap Analysis">
+  <Table>
+   <Column ss:Width="80"/><Column ss:Width="350"/><Column ss:Width="70"/><Column ss:Width="80"/>
+   <Column ss:Width="80"/><Column ss:Width="50"/><Column ss:Width="250"/>
+   <Row ss:StyleID="title"><Cell><Data ss:Type="String">Gap Analysis - ${esc(org)}</Data></Cell></Row>
+   <Row/>
+   <Row ss:StyleID="header">
+    <Cell><Data ss:Type="String">Subcategory</Data></Cell>
+    <Cell><Data ss:Type="String">Description</Data></Cell>
+    <Cell><Data ss:Type="String">Function</Data></Cell>
+    <Cell><Data ss:Type="String">Current</Data></Cell>
+    <Cell><Data ss:Type="String">Target</Data></Cell>
+    <Cell><Data ss:Type="String">Gap</Data></Cell>
+    <Cell><Data ss:Type="String">Notes</Data></Cell>
+   </Row>`;
+
+  // Collect gaps
+  const gaps = [];
+  FUNCTIONS.forEach(fn => fn.categories.forEach(cat => cat.subs.forEach(sub => {
+    const r = state.responses[sub.id] || {};
+    const current = r.current !== undefined ? r.current : null;
+    const target = getSubcatTarget(sub.id);
+    if (current !== null && target > 0 && current < target) {
+      gaps.push({ id: sub.id, desc: sub.desc, fn: fn.id, current, target, gap: target - current, notes: r.notes || '' });
+    }
+  })));
+  gaps.sort((a, b) => b.gap - a.gap);
+
+  gaps.forEach(g => {
+    let style = '';
+    if (g.gap >= 3) style = ' ss:StyleID="gap-high"';
+    else if (g.gap >= 2) style = ' ss:StyleID="gap-med"';
+    else if (g.gap >= 1) style = ' ss:StyleID="gap-low"';
+    xml += `\n   <Row${style}>
+     <Cell><Data ss:Type="String">${esc(g.id)}</Data></Cell>
+     <Cell><Data ss:Type="String">${esc(g.desc)}</Data></Cell>
+     <Cell><Data ss:Type="String">${esc(g.fn)}</Data></Cell>
+     <Cell><Data ss:Type="String">${TIERS[g.current].label}</Data></Cell>
+     <Cell><Data ss:Type="String">${TIERS[g.target].label}</Data></Cell>
+     <Cell><Data ss:Type="Number">${g.gap}</Data></Cell>
+     <Cell><Data ss:Type="String">${esc(g.notes)}</Data></Cell>
+    </Row>`;
+  });
+
+  xml += `\n  </Table>\n </Worksheet>\n</Workbook>`;
+
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NIST_CSF2_Assessment_${org.replace(/\s+/g, '_')}_${date}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// SAVE / LOAD / RESET
+// ============================================================
+function saveToJSON() {
+  const data = {
+    version: '2.1',
+    orgName: document.getElementById('orgName').value,
+    assessor: document.getElementById('assessor').value,
+    assessDate: document.getElementById('assessDate').value,
+    assessScope: document.getElementById('assessScope').value,
+    companySize: document.getElementById('companySize').value,
+    manualTargets: [...state.manualTargets],
+    responses: state.responses,
+    savedAt: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NIST_CSF2_Assessment_${data.orgName.replace(/\s+/g, '_') || 'draft'}_${data.assessDate || 'undated'}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadFromJSON() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.orgName !== undefined) document.getElementById('orgName').value = data.orgName;
+        if (data.assessor !== undefined) document.getElementById('assessor').value = data.assessor;
+        if (data.assessDate !== undefined) document.getElementById('assessDate').value = data.assessDate;
+        if (data.assessScope !== undefined) document.getElementById('assessScope').value = data.assessScope;
+        if (data.companySize !== undefined) {
+          document.getElementById('companySize').value = data.companySize;
+          state.companySize = data.companySize;
+        }
+        if (data.manualTargets) state.manualTargets = new Set(data.manualTargets);
+        else state.manualTargets = new Set();
+        if (data.responses) state.responses = data.responses;
+        updateTargetStatus();
+        buildSidebar();
+        buildContent();
+        alert('Assessment loaded successfully!');
+      } catch (err) {
+        alert('Error loading file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function resetAll() {
+  if (!confirm('Are you sure you want to reset all assessment data? This cannot be undone.')) return;
+  state.responses = {};
+  state.companySize = '';
+  state.manualTargets = new Set();
+  document.getElementById('orgName').value = '';
+  document.getElementById('assessor').value = '';
+  document.getElementById('assessDate').value = '';
+  document.getElementById('assessScope').value = '';
+  document.getElementById('companySize').value = '';
+  updateTargetStatus();
+  buildSidebar();
+  buildContent();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('assessDate').value = new Date().toISOString().slice(0, 10);
+buildSidebar();
+buildContent();
+</script>
+</body>
+</html>
